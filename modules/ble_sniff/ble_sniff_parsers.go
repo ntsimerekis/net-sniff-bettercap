@@ -15,7 +15,22 @@ func onProprietary(btleData map[string]interface{}) {
 		return
 	}
 
-	company_code_string, ok := btleData["btcommon.eir_ad.advertising_data"].(map[string]interface{})["btcommon.eir_ad.entry"].(map[string]interface{})["btcommon.eir_ad.entry.company_id"].(string)
+	advertising_data, ok := btleData["btcommon.eir_ad.advertising_data"].(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	eir_ad_entry, ok := advertising_data["btcommon.eir_ad.entry"].(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	data, ok := eir_ad_entry["btcommon.eir_ad.entry.data"].(string)
+	if !ok {
+		data = "No data could be retrieved"
+	}
+
+	company_code_string, ok := eir_ad_entry["btcommon.eir_ad.entry.company_id"].(string)
 	if !ok {
 		return
 	}
@@ -24,13 +39,11 @@ func onProprietary(btleData map[string]interface{}) {
 	company_code, _ := strconv.ParseUint(company_code_hex, 16, 16)
 	company_name := gatt.CompanyIdents[uint16(company_code)]
 
-	d := btleData["btcommon.eir_ad.entry"]
-
 	NewSnifferEvent(time.Now(),
 		"BLE ADVERT",
 		advert_address,
 		"BROADCAST",
-		d,
+		data,
 		"Proprietary %s Data",
 		company_name,
 	).Push()

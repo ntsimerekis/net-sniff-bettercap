@@ -28,14 +28,19 @@ func NewSniffer(s *session.Session) *Sniffer {
 		"If true, every captured and parsed packet will be sent to the events.stream for displaying, otherwise only the ones parsed at the application layer (sni, http, etc)."))
 
 	mod.AddParam(session.NewStringParameter("ble.sniff.interface",
-		"nRF Sniffer for Bluetooth LE COM6",
+		"nRF Sniffer for Bluetooth LE",
 		"",
 		"extcap nRF Sniffer interface"))
 
 	mod.AddParam(session.NewStringParameter("ble.sniff.source",
-		"/home/nt1036/Projects/JSONTest/mypacket.json",
+		"",
 		"",
 		"If set, the sniffer will read from this JSON file instead of the current interface."))
+
+	mod.AddParam(session.NewStringParameter("ble.sniff.pcap",
+		"",
+		"",
+		"If set, the sniffer will read from this PCAP file instead of the current interface."))
 
 	mod.AddParam(session.NewStringParameter("ble.sniff.output",
 		"",
@@ -43,8 +48,8 @@ func NewSniffer(s *session.Session) *Sniffer {
 		"If set, the sniffer will write to this json file."))
 
 	mod.AddParam(session.NewStringParameter("ble.sniff.tshark",
-		"",
 		"tshark",
+		"",
 		"location of tshark command"))
 
 	mod.AddHandler(session.NewModuleHandler("ble.sniff on", "",

@@ -2,6 +2,7 @@ package ble_sniff
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"os/exec"
 	"regexp"
@@ -13,17 +14,19 @@ import (
 )
 
 type SnifferContext struct {
-	Reader     *bufio.Reader
-	TSharkProc *exec.Cmd
-	Interface  string
-	Source     string
-	DumpLocal  bool
-	Verbose    bool
-	Filter     string
-	Expression string
-	Compiled   *regexp.Regexp
-	Output     string
-	OutputFile *os.File
+	Reader        *bufio.Reader
+	TSharkProc    *exec.Cmd
+	TSharkRunning bool
+	Interface     string
+	Source        string
+	PcapFile      string
+	DumpLocal     bool
+	Verbose       bool
+	Filter        string
+	Expression    string
+	Compiled      *regexp.Regexp
+	Output        string
+	OutputFile    *os.File
 }
 
 func (mod *Sniffer) GetContext() (error, *SnifferContext) {
@@ -46,11 +49,26 @@ func (mod *Sniffer) GetContext() (error, *SnifferContext) {
 			return err, ctx
 		}
 
-		ctx.TSharkProc = exec.Command(tshark, "-i", ctx.Interface, "-T", "json")
+		if err, ctx.PcapFile = mod.StringParam("ble.sniff.pcap"); err != nil {
+			return err, ctx
+		}
+
+		if ctx.PcapFile == "" {
+			ctx.TSharkProc = exec.CommandContext(context.Background(), tshark, "-i", ctx.Interface, "-T", "json")
+		} else {
+			ctx.TSharkProc = exec.CommandContext(context.Background(), tshark, "-T", "json", "-r", ctx.PcapFile)
+		}
 
 		tsharkout, err := ctx.TSharkProc.StdoutPipe()
 		if err != nil {
 			return err, ctx
+		}
+
+		err = ctx.TSharkProc.Start()
+		if err != nil {
+			return err, ctx
+		} else {
+			ctx.TSharkRunning = true
 		}
 
 		ctx.Reader = bufio.NewReader(tsharkout)
@@ -77,17 +95,19 @@ func (mod *Sniffer) GetContext() (error, *SnifferContext) {
 
 func NewSnifferContext() *SnifferContext {
 	return &SnifferContext{
-		Reader:     nil,
-		TSharkProc: nil,
-		Interface:  "",
-		Source:     "",
-		DumpLocal:  false,
-		Verbose:    false,
-		Filter:     "",
-		Expression: "",
-		Compiled:   nil,
-		Output:     "",
-		OutputFile: nil,
+		Reader:        nil,
+		TSharkProc:    nil,
+		TSharkRunning: false,
+		Interface:     "",
+		Source:        "",
+		PcapFile:      "",
+		DumpLocal:     false,
+		Verbose:       false,
+		Filter:        "",
+		Expression:    "",
+		Compiled:      nil,
+		Output:        "",
+		OutputFile:    nil,
 	}
 }
 
@@ -110,8 +130,13 @@ func (c *SnifferContext) Log(sess *session.Session) {
 
 func (c *SnifferContext) Close() {
 
-	if c.TSharkProc != nil {
-		c.TSharkProc.Process.Kill()
+	if c.TSharkRunning {
+		err := c.TSharkProc.Process.Kill()
+		if err != nil {
+			log.Debug("killed TSharkProc")
+		} else {
+			log.Warning("could not kill TShark Process")
+		}
 	}
 
 	if c.OutputFile != nil {
