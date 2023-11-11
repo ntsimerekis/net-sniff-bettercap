@@ -52,3 +52,27 @@ func onProprietary(btleData map[string]interface{}) {
 func onAdvertisement(btleData map[string]interface{}) {
 	onProprietary(btleData)
 }
+
+func onConnection(btleData map[string]interface{}, btattData map[string]interface{}) {
+
+	master_address, ok := btleData["btle.master_bd_addr"].(string)
+	if !ok {
+		return
+	}
+	slave_address, ok := btleData["btle.slave_bd_addr"].(string)
+	if !ok {
+		return
+	}
+	UART_message, ok := btattData["btgatt.nordic.uart_tx"].(string)
+	if !ok {
+		return
+	}
+
+	NewSnifferEvent(time.Now(),
+		"ATT",
+		master_address,
+		slave_address,
+		UART_message,
+		"UART Tx Message",
+	).Push()
+}

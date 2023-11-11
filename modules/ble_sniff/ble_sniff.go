@@ -37,6 +37,11 @@ func NewSniffer(s *session.Session) *Sniffer {
 		"",
 		"If set, the sniffer will read from this JSON file instead of the current interface."))
 
+	mod.AddParam(session.NewStringParameter("ble.sniff.extcapscript",
+		"/usr/lib/x86_64-linux-gnu/wireshark/extcap/nrf_sniffer_ble.sh",
+		"",
+		"If set, the sniffer will read from this JSON file instead of the current interface."))
+
 	mod.AddParam(session.NewStringParameter("ble.sniff.pcap",
 		"",
 		"",
@@ -129,12 +134,20 @@ func (mod *Sniffer) Start() error {
 
 			access_address, ok := btle_data["btle.access_address"].(string)
 			if !ok {
-				return
+				continue
 			}
 
 			if access_address == "0x8e89bed6" {
 				onAdvertisement(btle_data)
 				mod.Stats.NumAdvertisements++
+			} else {
+
+				btatt_data, ok := packet_map["btatt"].(map[string]interface{})
+				if !ok {
+					//add sniffer stats
+					continue
+				}
+				onConnection(btle_data, btatt_data)
 			}
 
 			mod.Stats.NumMatched++
